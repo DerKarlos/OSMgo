@@ -18,6 +18,7 @@ Examples:
 09 Châtel-Montagne - https://osmgo.org/v03.html?km=1&lat=46.11407931&lon=3.68266590&ele=28.10&dir=357&view=-12&tiles=1
 14 Chemnitz - https://osmgo.org/v03.html?km=1&lat=50.79482895&lon=12.91840384&ele=69.75&dir=0&view=-35&tiles=1
               https://osm2world.org/demo/?lat=50.7959231&lon=12.9175606&radius=288.59&alpha=1.571&beta=0.785
+              https://3dmr.eu/search?query=chemnitz
 
 
 */
