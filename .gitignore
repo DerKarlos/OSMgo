@@ -1,2 +1,6 @@
-node_modules.hide/.bin/esbuild
-/node_modules.hide
+/node_modules
+/dist
+.DS_Storex
+.DS_Store
+.DS_Store
+.DS_Store
