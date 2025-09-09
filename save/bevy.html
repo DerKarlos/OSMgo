@@ -1,0 +1,42 @@
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html" charset="utf-8" />
+        <meta name="viewport" content="width=device-width,user-scalable=no" />
+        <title>OSM - Building Viewer</title>
+        <style>
+            body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                background-size: 400% 400%;
+                height: 100vh;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            // canvas {
+            //     background-color: white;
+            //     width: 100%;
+            //     height: 100%;
+            // }
+        </style>
+    </head>
+    <body>
+        <div id="container"></div>
+        <div id="loading"><font size="15">Loading ...</font></div>
+    </body>
+    <script type="module">
+        import init from "./obi_wasm.js";
+        var loading = document.getElementById("loading");
+        const canvas = document.getElementById("container");
+        // canvas.width = window.innerWidth;
+        // canvas.height = window.innerHeight;
+        setTimeout(NowLoad, 1000);
+        init();
+
+        function NowLoad() {
+            var loading = document.getElementById("loading");
+            loading.innerHTML = "";
+        }
+    </script>
+</html>

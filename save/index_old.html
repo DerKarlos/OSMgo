@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html><head>
+    <title>OSM go (.org)</title>
+    <meta http-equiv="Content-Type" content="text/html"; charset="UTF-8">
+</head><body>
+OSM go ...
+
+<script>
+//httpx: Diese Datei ist "neutral"
+///////////// Store URL parameter in array
+var HTTP_GET_VARS=new Array();  // HTTP-Parameter sind viele Name=Wert Paare. Das "Array" hat keine Nummern-Index sondern verwendet den Namen! Genial.
+var strGET = document.location.search.substr(1,Math.min(document.location.search.length,500)) // No unlimited string
+
+if( strGET!='')
+{
+  gArr = strGET.split('&');
+  for (i in gArr)                   // Alle HTTP-Parameter
+  { v=''; vArr=gArr[i].split('=');  // In Name und Wert teilen
+    if(vArr.length>1){v=vArr[1];}   // Wert vorhanden? Merken.
+    HTTP_GET_VARS[unescape(vArr[0])] = unescape(v);  // Wert mit Index=Namen in Array.
+  }
+}
+
+//// Name suchen und Wert zurückgeben
+function GET_Par(v) {
+  if(   !HTTP_GET_VARS[v]){return '';}  // Name als Index nicht vorhanden? return Leerstring
+  return HTTP_GET_VARS[v];              // ansonsen return Wert zum Namen
+}
+
+if( GET_Par("lat") && GET_Par("lon") )
+     window.open("go.html?" +strGET,"_self")
+else window.open("map?go=1&"+strGET,"_self")
+
+
+</script>
+
+</body>

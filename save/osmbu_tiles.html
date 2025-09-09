@@ -1,0 +1,153 @@
+<!DOCTYPE html><html><head><title>OSMBuildings Tiles analyse</title>
+<meta http-equiv="Content-Type" content="text/html"; charset="UTF-8">
+<style> html, body, div, canvas { width: 100%; height: 100%; padding: 0; margin: 0; overflow: hidden; fill: #00BFFF; } </style>
+<style>              #container { position: absolute;            top: 0;   left: 0;    right: 0;    bottom: 0;       } </style>  
+<script type="text/javascript" src="three83.js">          </script>
+<script                        src="jquery-3.1.1.js">     </script>
+
+</head><body><div id="container"></div>
+<script>
+
+// Die Tile-Formeln waren neu für mich:
+function lon2tileX(lon,zoom) {   return (Math.floor((lon+180)/360*Math.pow(2,zoom))); }
+function lat2tileY(lat,zoom) {   return (Math.floor((1-Math.log(Math.tan(lat*Math.PI/180) + 1/Math.cos(lat*Math.PI/180))/Math.PI)/2 *Math.pow(2,zoom))); }
+function tileX2lon(  x,zoom) {   return (x/Math.pow(2,zoom)*360-180);}
+function tileY2lat(  y,zoom) {   var n=Math.PI-2*Math.PI*y/Math.pow(2,zoom) ;return (180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n))));  }
+
+/*
+Üblich sind Angaben in der Reihenfolge wie 49 Nord/11 Ost, also
+erst den Breitengrad (latitude)  vom Equator  hoch oder runter,
+dann den Längendgrad (longitude) von Grenwich rechts oder links
+Das macht auch die Kartenansich  "OSM.org/z/lat/lon"  so. [N.O.]
+
+!Aber das OSM-Tile-API macht es anders! nämlich X/Y [Lola!] wobei
+X                        = "quer"      (longitude) left2right
+Y (oder -Z bei THREE.js) = "senkrecht" (latitude)  top2bottom
+https://{s}.data.osmbuildings.org/0.2/anonymous/tile/{z}/{x}/{y}.json             [LoLa]
+
+Ein Beispiel (New York) als Tile-Abfrage:
+https://a.data.osmbuildings.org/0.2/anonymous/tile/16/19293/24641.json            [LoLa]
+Die Werte X/Y = 19293/24641 ergeben in Grad -74.0203857421875 / 40.70979201243495 [LoLa]
+Was aber als "normale GPS-Angabe"   40.7 Nord und -74 Ost (bzw. 74 West) gergibt  [NO]
+*/
+
+// New York:
+console.log("X/Y 19293/24641 [LoLa!] ", tileX2lon(  19293,16), tileY2lat(  24641,16) ) // -74.0203857421875 / 40.70979201243495 [LoLa]
+console.log("Forchheim 11/49 [LoLa!] ", lon2tileX(11.0330,16), lat2tileY(49.7124,16) ) //             34776 / 22307             [LoLa]
+console.log("X/Y 34776/22307 [LoLa!] ", tileX2lon(  34776,16), tileY2lat(  22307,16) ) // 49.71382462340503/11.0302734375       [LoLa]
+
+/*
+OSMBuilding-Tile-Syntax: 
+s=abcd  Vier URLs parallel nutzbar
+z=level zoom 16 (und  15?)
+
+x/y <= _lon_ / |lat| => left2right/top2bottom = Tile-ID aus lon/lat ermittelt. Siehe oben und:  https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
+                                   "nördlicher Breite"
+    
+Forchheim http://www.openstreetmap.org/#map=13/49.7124/11.0330    lat/lon  Breitengrad/Längengrad
+
+    
+height (mostly)
+buildingPart:y/n (if yes)
+
+minHeight
+levels
+minLevel
+
+color
+material
+
+roofMaterial
+roofShape  ==!==> Also ist der Code im Client/open source
+roofDirection
+
+relationId
+
+
+Was ist der Unterschied zwischen zoom-level 15 und 16?
+16 Hat mehr Objekte (Dächer, die hat 15 aber auch)
+
+*/
+
+var clock = new THREE.Clock()
+var loadedData
+var url = "https://a.data.osmbuildings.org/0.2/anonymous/tile/16/19433/24642.json"  // => 34776 / 22307
+//r url = "https://a.data.osmbuildings.org/0.2/anonymous/tile/16/19293/24641.json"    ??? Ausserhalb 19293-19433 und  24600-24642 geht nicht!
+//                                                                                        Nur New-Manhatten aufl Level 16?
+
+var z = 16  // Nur 15 plus bei 16 nur New York (19293-19433/24600-24642)?
+var x = lon2tileX(11.0330,z)
+var y = lat2tileY(49.7124,z) // -z
+
+x = lon2tileX(-74.020,z) ;y = lat2tileY(40.7097,z) // -z  // New York
+x = lon2tileX(11.00474,z) ;y = lat2tileY(49.59592,z) // -z  // Erlangen
+
+// OSMBuildings-Tile liefert alle 3 Teile aus. Wann wird es Aussen durch Innen ersetzen?
+//    3 w31509307 Polygon no height Object { color: "#d1c9c7" }  osmbu_tiles.html:126:13   oben
+// 282 w363966285 Polygon no height Object { roofColor: "red", roofShape: "gabled", buildingPart: true }  innen
+// 284 w363966288 Polygon no height Object { levels: 4, color: "#c6af98" }    unten
+
+
+  url = "https://b.data.osmbuildings.org/0.2/anonymous/tile/"+z+"/"+x+"/"+y+".json"
+console.log(url)
+
+var 
+xmlhttp = new XMLHttpRequest()
+xmlhttp.onreadystatechange = function() {
+    console.log("Query Status: ",xmlhttp.readyState,xmlhttp.status)
+	if ((xmlhttp.readyState == 4) && (xmlhttp.status == 200) ) {
+    	console.log("   ... Query beantwortet:",xmlhttp.statusText)
+        if(xmlhttp.statusText=="OK") 
+            loadedData = jQuery.parseJSON( xmlhttp.responseText )	// Antworttext auswerten in Javascriptvariablen        
+        else alert("kurz")
+	}
+}
+
+xmlhttp.onprogress= function(evt) {
+	console.log("onprogress - loaded,total: ",evt.loaded , evt.total)
+}
+
+xmlhttp.open("GET", url, true);
+xmlhttp.send();
+console.log("Query ...");
+
+
+animate();
+// Init Ende /////////////////////////////
+
+
+function animate() {
+    var dt = clock.getDelta() + 0.000001
+    requestAnimationFrame(animate);    
+	if(loadedData){
+        var features = loadedData.features
+        console.log("Type length:",loadedData.type,features.length);
+        for(var f in features) {
+            var feature = features[f]
+            var height = "no height"
+            if(feature.properties.height) height = feature.properties.height            
+            console.log(f,feature.id,feature.geometry.type,height,feature.properties)
+            if(feature.type!="Feature")  
+                alert("Feature")
+            if(!feature.id)  
+                alert("id") // wNNN, rNNN
+        //  if(!feature.properties.height)  
+        //      console.log("no height: "+f) // w129700432  w276202578 ... default height
+            if(!feature.geometry)
+                alert("Feature")
+            else {
+                var geometry = feature.geometry
+                if(geometry.type!="Polygon")  
+                    alert("Polygon "+f)
+                if(!geometry.coordinates)  
+                        alert("coordinates "+f)
+            }
+        }
+        
+	    loadedData = false 
+	}
+}
+
+console.log("------------------------------- ENDE ----------------------------");
+
+</script></body></html>

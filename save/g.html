@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,user-scalable=no">
+<title>HTML5 Geolocation | Mobile HTML5 test suite</title>
+
+<script>
+navigator.geolocation.getCurrentPosition(
+    function(p) {
+	alert('Latitude: ' + p.coords.latitude + ', Longitude: ' + 
+                    p.coords.longitude + ', Altitude: ' + 
+                    p.coords.altitude);
+    },
+    function () {
+	 alert('Error locating your device');
+    }
+);</script>
+<style>
+</style>
+
+</head>
+
+<body>
+
+
+	<h1>HTML5 Geolocation</h1>
+ 
+
+</body></html>

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>"OSM go" - zoom to select</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" ;="" charset="UTF-8">
+    <link rel="stylesheet" href="ol.css" type="text/css">
+    <style>
+      .map {
+        height:100%;
+        width: 100%;
+      }
+    </style>
+    <script src="ol.js" type="text/javascript"></script>
+    <title>OpenLayers 3 example</title>
+  </head>
+  <body>
+    <div id="map" class="map"></div>
+    <script type="text/javascript">
+    
+    var latitude  = 51.508080
+    var longitude = -0.097124
+    var HTTP_GET_VARS=new Array();  // HTTP-Parameter sind viele Name=Wert Paare. Das "Array" hat keine Nummern-Index sondern verwendet den Namen! Genial.
+
+
+    var myURL = window.location.protocol +"//"+ window.location.host + "" + window.location.pathname;
+        myURL = myURL.slice(0, myURL.lastIndexOf("/") ); 
+        console.log(myURL)
+    
+    if(Analyse_URL_Parameter()){
+      latitude  = GET_Par("lat") * 1 // Wie macht man aus String Nummer???
+      longitude = GET_Par("lon") * 1
+      console.log("lat,lon: ",latitude,longitude)
+    }
+      
+    
+      var map = new ol.Map({
+        target: 'map',
+        layers: [
+          new ol.layer.Tile({
+            source: new ol.source.OSM()
+          })
+        ],
+        view: new ol.View({
+          center: ol.proj.fromLonLat([longitude,latitude]),
+          zoom: 14
+        })
+      });
+      
+      
+      map.on('singleclick', onsingleclick);
+
+
+      function onsingleclick(evt)
+      {
+        var LonLat = ol.proj.transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
+        console.log(evt.coordinate,LonLat)
+    	  window.open(myURL+"/index.html?lon="+LonLat[0]+"&lat="+LonLat[1],"_self")	
+      }
+
+      ///////////// Parameter einlesen /////////////////////
+
+      //// Parameter in Array ablegen
+      function Analyse_URL_Parameter() {
+        var strGET = document.location.search.substr(1,document.location.search.length);
+        if(strGET!='') // Wenn was da ist
+        {
+          gArr = strGET.split('&');
+          for (i in gArr)  //    for (i=0;i<gArr.length;++i)    Alle HTTP-Parameter
+          { v=''; vArr=gArr[i].split('=');  // In Name und Wert teilen
+            if(vArr.length>1){v=vArr[1];}   // Wert vorhanden?  Merken.
+            HTTP_GET_VARS[unescape(vArr[0])] = unescape(v);  // Wert mit Index=Namen in Array.
+          }
+          return 1;
+        }
+        return 0;
+      }
+
+      //// Name suchen und Wert zurückgeben
+      function GET_Par(v) {
+        if(!HTTP_GET_VARS[v]){return '';}  // Name als Index nicht vorhanden? return Leerstring
+        return HTTP_GET_VARS[v];           // ansonsen return Wert zum Namen
+      }
+
+      
+      
+    </script>
+  </body>
+</html>

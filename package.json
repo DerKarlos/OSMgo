@@ -1,0 +1,10 @@
+{
+    "type": "module",
+    "dependencies": {
+        "chroma-js": "^3.1.2",
+        "three": "^0.173.0"
+    },
+    "devDependencies": {
+        "vite": "^6.3.5"
+    }
+}

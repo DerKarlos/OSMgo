@@ -1,0 +1,5 @@
+Header add "Cache-Control" "no-cache"
+AddType text/plain .obj .mtl
+AddType 'application/wasm; charset=windows-1252' .wasm
+
+# https://help.one.com/hc/de/articles/115005587469-Wie-kann-ich-den-Aufruf-meiner-Homepage-via-HTTPS-erzwingen-

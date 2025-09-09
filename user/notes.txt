@@ -1,0 +1,16 @@
+2017-06-03 18:07:22;karlos;41.507668296530355;-36.56250000000001;This is a node in the middle of nowhere, just to show you, how nodes work: In "OSM go" press key N<br>
+2017-06-03 20:25:33;karlos;48.137266846839694;11.575379182157695;Have a look underground! 4 Levels for tram and tube<br>
+2017-06-03 20:30:39;karlos;48.06645806066722;11.550588689011766;Hier wurde die einzige gute deutsche Fernsehserie gedreht: "Raumatrouille"<br>
+2017-06-09 10:04:13;martin;49.63191397245434;10.881151945546272;Im Industriegebiet fehlt noch einiges...<br>
+2017-08-23 14:48:56;karlos;47.7974112777197;11.053533554077148;Hier waren einst Schutthalten. Und für Raumpatrouille der Planetoid MZ4 usw.<br>
+2017-11-20 19:39:46;karlos;47.95668248611187;11.314506416945312;Anflug auf die Orion (Raumpatrouille)<br>
+2018-03-23 04:49:46;igoreliezer;-23.04012156681673;-47.833844924171984;The bridge (viaduct) starts here. The highway is 8 meters lower.<br>
+2018-04-03 08:52:05;igoreliezer;-23.051421369342087;-47.83691833277268;Here is missing an amenity marketplace<br>
+2018-04-03 08:57:46;igoreliezer;-23.05019185851747;-47.836362286117485;building=carport and building:part=carport should be rendered like building=roof. See building=carport on the wiki.<br>
+2018-04-03 09:00:27;igoreliezer;-23.050196581189645;-47.83684480674762;Idea: shift click forces to select the building (outline), not the building:part.<br>
+2018-04-05 22:35:15;karlos;13.429036006789932;144.76102190711714;Try to render the whole island: Guam Micronesia<br>
+2018-05-25 20:08:45;karlos;50.97714133854849;6.977423403838738;Hier sind die Krane<br>
+2018-06-07 20:03:48;karlos;-23.050104266465507;-47.836795461902916;A building:part does not know, in what building it is, yet. Do you have Code?  ;-)<br>
+2021-10-13 21:06:14;karlos;53.57797091296812;9.728782972039618;Hello World<br>
+2022-07-23 15:28:20;karlos;40.741606223977726;-73.98954997675975;test<br>
+2025-01-28 12:32:48;thuringia;48.13719272089765;11.5754911405336;Test_2025<br>

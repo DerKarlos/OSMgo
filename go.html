@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>OSMgo V0.28</title>
+        <meta http-equiv="Content-Type" content="text/html" charset="UTF-8" />
+        <meta name="viewport" content="width=device-width,user-scalable=no" />
+        <style>
+            html,
+            body,
+            div,
+            canvas {
+                width: 100%;
+                height: 100%;
+                padding: 0;
+                margin: 0;
+                overflow: hidden;
+                fill: #00bfff;
+                position: fixed;
+            }
+        </style>
+        <style>
+            #container {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+            }
+        </style>
+
+        <script type="text/javascript" src="three106/three.js"></script>
+        <script type="text/javascript" src="three106/ShapeUtils.js"></script>
+        <script type="text/javascript" src="three106/Earcut.js"></script>
+        <script src="three106/MTLLoader.js"></script>
+        <script src="three106/OBJLoaderThat.js"></script>
+        <script src="three106/DDSLoader.js"></script>
+        <script src="three106/ColladaLoader.js"></script>
+
+        <script src="StereoEffect.js"></script>
+        <script src="jquery-3.1.1.js"></script>
+        <script src="chroma.js"></script>
+        <script src="keepright.js"></script>
+        <script src="repo.js"></script>
+        <script src="vector.js"></script>
+        <script src="panoramax.js"></script>
+        <script src="mapillary.js"></script>
+        <script src="WedgeGeometry.js"></script>
+        <script src="controls.js"></script>
+        <script src="osm.js"></script>
+        <script src="hud.js"></script>
+        <script src="games.js"></script>
+        <script src="render.js"></script>
+        <script src="roof.js"></script>
+        <!-- script                        src="overpass2.js">        < /!script -->
+    </head>
+    <body>
+        <div id="container"></div>
+        <script>
+            /*
+
+Die JS-Module
+
+Nicht von mir:
+threeNNN/three.js			Daten zur Grafikkarte
+threeNNN/Earcut.js			für three Flächen zu Dreiecken mit Löchern
+threeNNN/ShapeUtils.js		braucht Etrcut? oder niemand
+threeNNN/MTLLoader.js		Alles zum Laden von 3D-Modellen
+threeNNN/OBJLoader.js
+threeNNN/DDSLoader.js
+threeNNN/ColladaLoader.js
+StereoEffect				Für Google-Cardboard (habe ich manipuliert)
+jquery-3.1.1				Tiile-String zu JS-Struktur
+chroma.js				    String zu Farbcode
+
+Von mir, sogar bedingt modular:
+games.js					Sowas wie PackMan, aber nicht aktiv
+keepright.js				Server für einen OSM-Fehler-Tracker (nicht fertig)
+repo.js					    3DMR-Code
+mapillary.js				Um deren Bilder an zu zeigen
+vector.js					Für deinen Server der Code
+
+Von mir, chaotisch:
+osm.js					    Tile-Raster handling, Overpass-Abfrage  3D auf Tiles
+overpass2.js				Daten für Offline-Simulation zum Testen
+hud.js					    HeadUpDisplay: Textausgabe links oben, Kompass rechts oben
+controls.js				    Tastatur,Maus,Touchscreen Bewegungen,Multiuser
+roof.js					    Dachformen
+render.js					DER REST! Das sollte mal geteilt werden in
+						    OSM-Daten zu 3D-Objekte: Farben,Nodes,Ways,Relationen
+						    Lader-Statemaschine
+go.html					    Initiierung, Renderzyklus
+
+*/
+
+            //  88 oder 83
+            /// If this is target as file, abwe this must only be this!:  <div id="container"></div>
+            /// Windows likes to distroy this while "Safe Page" and the 3d viewer will stay empty/white
+
+            // https://github.com/mrdoob/three.js/tree/dev/src/extras
+            // https://github.com/mrdoob/three.js/tree/dev/examples/js/loaders
+
+            // <script   import {ShapeUtils} from 'threeNNN/ShapeUtils.js';    < /script>
+
+            // <title>"OSM-go" V0.00? - OpenStreetMap  Gamificaton, according to Pockemon-GO (Experimental) </title>
+
+            /***********************************************************************************************************************************\
+|*** Licnece and Sources                                                                                                         ***|
+|***                                                                                                                             ***|
+|*** If you like to use my sources, have fun! And please tell me. It seems common, so I declare this source as under GPL :-)     ***|
+|*** It is all JavaScript. "Safe Page" should store all the source files on your device. May be there will be a github some day. ***|
+\***********************************************************************************************************************************/
+
+            /** /
+// To see errors on touch devices, activate this Errorhandler producing alert dialogs
+window.onerror = function(msg,url,line){
+    //if(!stereoOn)
+       alert(msg+'\n'+url+'\nLine: '+line)
+    return true
+}
+/**/
+
+            //alert("first test alert")//
+
+            ///////////// Store URL parameter in array
+            var HTTP_GET_VARS = new Array(); // HTTP-Parameter sind viele Name=Wert Paare. Das "Array" hat keine Nummern-Index sondern verwendet den Namen! Genial.
+            var strGET = document.location.search.substr(
+                1,
+                Math.min(document.location.search.length, 500),
+            ); // No unlimited string
+            if (strGET != "") {
+                gArr = strGET.split("&");
+                for (i in gArr) { // Alle HTTP-Parameter
+                    v = "";
+                    vArr = gArr[i].split("="); // In Name und Wert teilen
+                    if (vArr.length > 1) {
+                        v = vArr[1];
+                    } // Wert vorhanden? Merken.
+                    HTTP_GET_VARS[unescape(vArr[0])] = unescape(v); // Wert mit Index=Namen in Array.
+                }
+            }
+
+            //// Name suchen und Wert zurückgeben
+            function GET_Par(v) {
+                if (!HTTP_GET_VARS[v]) {
+                    return "";
+                } // Name als Index nicht vorhanden? return Leerstring
+                return HTTP_GET_VARS[v]; // ansonsen return Wert zum Namen
+            }
+
+            //// Name suchen und Wert zurückgeben
+            function GET_ParD(v, d) {
+                if (!HTTP_GET_VARS[v]) {
+                    return d;
+                } // Name als Index nicht vorhanden? return Defaultwert
+                return HTTP_GET_VARS[v]; // ansonsen return Wert zum Namen
+            }
+
+            //	     terr("Bad colour: "+col,way,err)  http ://osmgo.org/go.html?lat=50.10692258&lon=8.67174460&ele=161.44&dir=328&view=-2&user=karlos&dbg=1&fps=10&con=1&tiles=4&opt=2
+            function terr(t, way, a) {
+                var l = t;
+                if (a) l = l + "," + a;
+                if (dbg > 2) log(l);
+                replayLog += "!" + l;
+                if (!way) return;
+                if (!Number.isInteger(way.id)) return;
+                if (terrNr <= 0) return;
+                terrNr--;
+
+                way.terr = l;
+                way.AddTag("Tag Error:", l);
+                var m = Math.floor(way.wayNodes.length / 2);
+                var n = nodes[way.wayNodes[m]];
+                if (!n || gAviation) return;
+                var geometry = new THREE.CylinderGeometry(5, 0, 300, 3);
+                var mesh = new THREE.Mesh(geometry, mlm.red);
+                mesh.position.y = 300 / 2;
+                mesh.position.x = n.x;
+                mesh.position.z = n.z;
+                mesh.osm = way;
+                maps.add(mesh);
+            }
+
+            function err(t, a, b, c, d, e) {
+                if (dbg > 2) log(t, a, b, c, d, e);
+            }
+
+            function log(t, a, b, c, d, e) {
+                var l = t;
+                if (a) l = l + "," + a;
+                if (b) l = l + "," + b;
+                if (c) l = l + "," + c;
+                if (d) l = l + "," + d;
+                if (e) l = l + "," + e;
+                console.log(l);
+                replayLog += "!" + l;
+                // writeLogLine("@"+l)
+            }
+
+            function isAlphaNum(TCode) {
+                if (TCode.length < 2) return false;
+                for (var i = 0; i < TCode.length; i++) {
+                    var char1 = TCode.charAt(i);
+                    var cc = char1.charCodeAt(0);
+                    if (
+                        (cc > 47 && cc < 58) ||
+                        (cc > 64 && cc < 91) ||
+                        (cc > 96 && cc < 123)
+                    );
+                    else return false;
+                }
+                return true;
+            }
+
+            function isIpadOS() {
+                return (
+                    navigator.maxTouchPoints &&
+                    navigator.maxTouchPoints > 2 &&
+                    /MacIntel/.test(navigator.platform)
+                );
+            }
+
+            //// Main-Start ////
+
+            var latitude = GET_ParD("lat", 0) * 1; // Wie macht man aus String Nummer???
+            var longitude = GET_ParD("lon", 0) * 1;
+            var lalo0 = latitude == 0 && longitude == 0;
+            var parMdl = GET_ParD("mdl", 99) * 1;
+
+            var viewLevel = GET_ParD("vil", 17) * 1; // !
+            var diffLevel = GET_ParD("dil", 1) * 1; // 1=16,2*2=4   2=15,4*4=16
+            var gAviation = GET_ParD("avi", 0) * 1;
+
+            var osmBnode_id = 1001;
+            var keyShift = false;
+            var keyAlt = false;
+
+            var raycaster = new THREE.Raycaster();
+
+            var expWasm;
+            var memWasm;
+            var ddmrSelected = null;
+
+            var wasmState = 0; // 0:NotImplemented 1:vorhanden 2:CodeLadend 3:bereit 4:TileLadne 5:TielGeladenUndVerarbeitet
+
+            if (typeof WebAssembly !== "undefined" && GET_Par("wa") * 1)
+                wasmState = 1;
+
+            /*** /
+else if(lalo0) {
+    var url = "map"
+    if(!GET_Par("user")) url = url + "?user=" + GET_Par("user")
+	window.open("map","_self")
+    missingPosition_ThisWillCauseAnErrorAndStop_ThatsOK
+}
+/***/
+
+            // NOT WORKING on iPhone Safari: window.blockMenuHeaderScroll = false;
+
+            //////////////  ! NUR HIER sollten globale Variablen sein, wenn es denn sein muß /////////////////////////////////////////////
+            // (var in ein Init scheiben würde sie verstecken, this ist auch umständlich? Oder doch eine Klasse Globals?)
+
+            var dbg = GET_ParD("dbg", 1) * 1;
+            var waysMax = GET_ParD("wmx", 1000000000) * 1;
+            var gServer = GET_ParD("ser", 1) * 1; // 1=osm 2=OSMBuilding 3=Chemnitz
+            var gCustom = GET_ParD("cu", 0) * 1; // 1=Jan/Berlin/OSMBuilding-Tiles 2=Wien 3=WASM? 3?4=Parkhaus
+            var moreMax = GET_ParD("more", 1) * 1;
+            var terrNr = GET_ParD("err", 20) * 1;
+            var httpx = "https://";
+            var myURL =
+                window.location.protocol +
+                "//" +
+                window.location.host +
+                "" +
+                window.location.pathname;
+            myURL = myURL.slice(0, myURL.lastIndexOf("/"));
+            if (dbg > 2) log("myURL: ", myURL);
+            if (myURL.substring(0, 5) == "http:") {
+                httpx = "https://";
+                log("::::::::::    You are using http://    :::::::::::");
+            }
+
+            var sceneContainer = document.getElementById("container");
+
+            var camera,
+                cameraShadow,
+                cameraHUD,
+                stereoEffect,
+                webGLRenderer,
+                scene,
+                sceneHUD;
+            var control, light;
+            var hud;
+
+            var FilterType = 0; //0=aus 1=!Marker 2=Transparent 3=#Gittervar FilterMaterial = null
+
+            var viewTiles = [[]]; // [latZ][lonX]
+            var loadTiles = [[]]; // [latZ][lonX]
+            //r map  // map of actual tile to be placed in
+            var maps; // root mash for all tile maps
+            var tileLoading = false;
+            var tileDistMax = GET_ParD("tiles", 4) * 1;
+
+            var fly = GET_ParD("fly", 4);
+            var multiplay = GET_ParD("multi", 0) * 1;
+
+            var userInput = "";
+            var userSet = true; // not used !!!
+            var userName = GET_ParD("user", "user").toLowerCase();
+
+            if (
+                userName == "" ||
+                userName == "user" ||
+                userName == "noname" ||
+                !isAlphaNum(userName)
+            ) {
+                userName = "user";
+                userSet = false;
+            }
+
+            if (multiplay && !userSet) {
+                var inputText = "may be your OSM name";
+                userInput = prompt("Enter a name to multiplay", inputText);
+                log("input userName: ", userInput);
+                if (
+                    userInput != null &&
+                    userInput != inputText &&
+                    isAlphaNum(userInput)
+                ) {
+                    userName = userInput.toLowerCase();
+                    userSet = true;
+                } else {
+                    multiplay = false;
+                }
+            }
+
+            log("userName: ", userName, "multiplay: ", multiplay);
+
+            var userID = -2;
+            var stateCity = undefined;
+
+            var avatars = [];
+            var cEye = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+            var cSky = new THREE.MeshBasicMaterial({ side: THREE.BackSide });
+
+            var meshXQuaFly = undefined; // neuer Avatar als Fly/Quatrotor/NICHT segway
+            var mesh1Quatro = new THREE.Mesh();
+            var mesh2Segway = new THREE.Mesh();
+            var mesh3FlyCol = new THREE.Mesh();
+
+            var gpsAct = undefined;
+            var mLogo = null;
+            var tileDing = null;
+            var max_dt = 1 / 2; // mindestens 2 FPS - 1000 ms / x = ...ms
+
+            var chatLast = "";
+            var chat0 = "";
+            var chat1 = "";
+            var chat2 = "";
+            var chat3 = "OSM/go global chat";
+
+            var posY0 = 10;
+            var posX0 = (posZ0 = 0);
+            var dir = 0;
+            var view = 0;
+
+            var DrawDelta = 0.05; // 5cm abstand zwischen den "Schichten" Wie Punkte über Striche. Besser Shape-Merge??
+
+            var teststr = "";
+            var DevOrConsOn = false;
+            var testInst;
+
+            var defHeight = GET_ParD("hei", 0);
+            var viewAbstr = GET_ParD("abs", 0);
+
+            var touchable = "createTouch" in document;
+            var keep;
+            var windSpin = [];
+            //r propeller
+
+            var stereoOn = -1; /* Undefinded */
+            if (GET_Par("card")) stereoOn = GET_Par("card") * 1;
+            //( navigator.platform=="iPad" ) stereoOn = 0
+            if (isIpadOS()) stereoOn = 0;
+
+            if (stereoOn == -1) {
+                if (
+                    touchable &&
+                    sceneContainer.offsetWidth > sceneContainer.offsetHeight
+                )
+                    stereoOn = 1;
+                else stereoOn = 0;
+                if (stereoOn == 1) {
+                    //!!!!!!!!!!!!!!!!!!!    var ok = confirm("Run in VR/Stereo-Mode?\n(like Google Cardboard)")
+                    //!!!!!!!!!!!!!!!!!!!    if (ok != true) stereoOn = 0
+                }
+            }
+
+            var shadowD = 1;
+            var shadow = GET_Par("sha") == "1"; // Slows down like from 35 to 25 FPS
+            if (touchable == 1) shadow = false; //stereoOn
+
+            var osmDo = 0;
+
+            var simul = false;
+            if (GET_Par("sim")) {
+                // Parameter not "0"
+                simul = true;
+                log("OSM-Simulation");
+                gpsOn = false; //??
+                latitude = 49.7151; // NORD Simulations-Default FO
+                longitude = 11.087; // ORST
+                lalo0 = false;
+            }
+
+            var opt = 0;
+            if (tileDistMax > 3) opt = 2;
+
+            var gOptimize = GET_ParD("opt", opt) * 1;
+            var replay = GET_ParD("replay", 0);
+            var replayI = -1;
+            var replayLast = -1;
+            var replayLog = "";
+            if (gCustom == 2) gOptimize = 0;
+            if (gServer == 3) {
+                viewLevel = 16;
+                diffLevel = 0;
+            }
+
+            if (replay) {
+                var xmlhttpN = new XMLHttpRequest();
+                xmlhttpN.onreadystatechange = function () {
+                    log(xmlhttpN.readyState, xmlhttpN.status);
+                    if (xmlhttpN.readyState == 2 && xmlhttpN.status == 404)
+                        alert("Replay file missing: " + replay);
+                    if (xmlhttpN.readyState == 4 && xmlhttpN.status == 200) {
+                        log(
+                            "replay replay replay replay replay replay replay ",
+                        );
+                        //alert("##################test################")
+
+                        if (gAviation) {
+                            replay = xmlhttpN.response.split("$");
+                            replayI = 1;
+                        } else {
+                            replay = xmlhttpN.response.split("<br>");
+                            replayI = 0;
+                        }
+                        var line = replay[replayI];
+
+                        if (gAviation) {
+                            var l = line.split(",");
+                            // 0      1          2 3        !4 5         !6 7    8!!   9      10  11 12
+                            // $GPRMC,HHMMSS.uuu,A,BBBB.BBBB,b,LLLLL.LLLL,l,GG.G,RR.R ,DDMMYY,M.M,m,F*PP
+                            // $GPRMC,082832.000,A,4934.9869,N,01052.9761,E,0.00,12.78,010618,   , ,D*51
+                            latitude = DDMM2D(l[3] * 1);
+                            if (l[4] == "S") latitude *= -1;
+                            longitude = DDMM2D(l[5] * 1);
+                            if (l[6] == "W") longitude *= -1;
+                            if (camera) camera.position.y = 55;
+                        } else {
+                            var l = line.split(";");
+                            //                   0 1         2         3      4   5     6     7        8      9    10
+                            // 2017-06-03 17:57:11;1;48.196042;11.810881;101.00;0.0;-10.0;0.000;46979831;myname;extra
+                            latitude = l[2] * 1;
+                            longitude = l[3] * 1;
+                            if (camera) camera.position.y = l[4];
+                        }
+                        lalo0 = false;
+                        osmDo = 0;
+                        if (hud) hud.Out(["Replay found"]);
+                    }
+                };
+                xmlhttpN.open("GET", "user/" + replay + ".log", true);
+                xmlhttpN.send();
+                //alert("Replay START")
+                osmDo = 22;
+                //  latitude  = 0.00000111
+                lalo0 = false;
+            }
+
+            //  0,1,2: AJAX todo/aktiv/done/simuliert per JS-Datei,   -1:  Simulation starten
+            var gpsOn = true;
+            if (GET_Par("gps")) gpsOn = false;
+            if (!lalo0) {
+                gpsOn = false;
+            }
+            if (longitude < -180) longitude += 360;
+            if (longitude > +180) longitude -= 360;
+
+            var keepDo = GET_Par("keep") == "1";
+
+            var lon0 = (lat0 = 0);
+            // !!, Kleinere Ecke der letzten geladenen Tile - aber in Metern!
+            var lastLoadx = -9e9;
+            var lastLoadz = +9e9;
+            var lastLoadEx = +9e9;
+            var lastLoadEz = -9e9;
+
+            var accuOld = 99999;
+            var gamePoints = 0;
+
+            var clock = new THREE.Clock();
+            var conCl = new THREE.Clock();
+            var skyDome;
+            var lowDome;
+
+            var mlm = null;
+            var fovDefault = GET_ParD("zoom", 1) * 40;
+            var lightX = 6; //  0=genau Richtung Süden
+            var lightZ = 100000; // weit weg im Süden (=PLUS!)
+            var lightY = 150000; // genau so hoch: 45 Grad Sonnenstand
+
+            var NEAR = 0.05;
+            var FAR = 10000;
+
+            var iji = "b4UzKKIU64c7mJbsDCsSvL";
+
+            ///////  Sowas wie ein Main-Klassen-Konstruktor
+            init();
+
+            function init() {
+                if (dbg > 0) log("!!1!!" + strGET.replace("&", "§"));
+
+                //r mode = 0;  jetzt controlMode?
+                var SCREEN_WIDTH = window.innerWidth;
+                var SCREEN_HEIGHT = window.innerHeight;
+                var SHADOW_MAP_WH = 4096;
+
+                scene = new THREE.Scene(); // Map+Avatare & HUD (oder demnächst einzeln)
+                //scene.fog = new THREE.Fog( 0x00BFFF, (tileDistMax*111*0.8), (tileDistMax*111)) // FAR*0.5, FAR*0.7 );
+                camera = new THREE.PerspectiveCamera(
+                    fovDefault,
+                    SCREEN_WIDTH / SCREEN_HEIGHT,
+                    NEAR,
+                    FAR,
+                ); // fov, aspect,   near, far
+                camera.position.set(0, 0, 0);
+                // scene.add(camera);  // Notwendig nur für HUD & Co  ??
+
+                var ambie = new THREE.AmbientLight(0x888888);
+                scene.add(ambie); // 444
+                light = new THREE.SpotLight(0x555555, 0.8, 0, Math.PI / 2); // FFF  color, intensity, distance, angle, penumbra, decay )
+                light.position.set(lightX, lightY, lightZ); // todo: shadow wollowing camera!!!
+                light.target.position.set(0, 0, 0);
+
+                if (shadow) {
+                    cameraShadow = new THREE.PerspectiveCamera(
+                        fovDefault /
+                            200 /*40 BreiteHöhe^Schärfe des Schattens*/,
+                        1,
+                        lightY / 2,
+                        lightY * 2,
+                    ); // !ZWEITE Kammaera! Nimmt Schatten auf?
+                    light.castShadow = shadow;
+                    light.shadow = new THREE.LightShadow(cameraShadow); // !ZWEITE Kammaera! Nimmt Schatten auf?
+                    light.shadow.bias = 0.000000001; //Kantenschärfe?
+                    light.shadow.mapSize.width = SHADOW_MAP_WH;
+                    light.shadow.mapSize.height = SHADOW_MAP_WH;
+                }
+                scene.add(light);
+
+                webGLRenderer = new THREE.WebGLRenderer({ antialias: true });
+                webGLRenderer.setClearColor(0x734a08); // 3D-Hintergrundfarbe:   //    0x734a08=brown 	 0x00BFFF=deep sky blue
+                webGLRenderer.setPixelRatio(window.devicePixelRatio);
+                webGLRenderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+                webGLRenderer.autoClear = false;
+                sceneContainer.appendChild(webGLRenderer.domElement);
+
+                if (shadow) {
+                    webGLRenderer.shadowMap.enabled = true;
+                    webGLRenderer.shadowMap.type = THREE.PCFShadowMap; // BasicShadowMap  PCFShadowMap PCFSoftShadowMap
+                }
+
+                if (dbg > 2)
+                    log(
+                        "Platform:" +
+                            navigator.platform +
+                            " w:" +
+                            SCREEN_WIDTH +
+                            " h:" +
+                            SCREEN_HEIGHT,
+                    ); // iPhone 980 1461       Quer:  980 h:551
+
+                /*	i f ( gl.getShaderInfoLog( shader ) !== '' ) {
+		console.warn( 'THREE.WebGLShader: gl.getShaderInfoLog()', type === gl.VERTEX_SHADER ? 'vertex' : 'fragment', gl.getShaderInfoLog( shader ), addLineNumbers( string ) );
+    =
+    THREE.WebGLShader: gl.getShaderInfoLog() vertex WARNING: 0:1: extension 'GL_ARB_gpu_shader5' is not
+    */
+
+                var stereoMode = 0; // 1=Schielen
+
+                //alert("stereoOn "+stereoOn+" touchable "+touchable)
+
+                if (stereoOn)
+                    stereoEffect = new THREE.StereoEffect(
+                        webGLRenderer,
+                        stereoMode,
+                    );
+                else {
+                    cameraHUD = new THREE.OrthographicCamera(
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        500,
+                    ); // HUD camera, viewport to match screen dimensions is set in .Resize
+                    sceneHUD = new THREE.Scene(); // Create also a custom scene for HUD.
+                    ambie = new THREE.AmbientLight(0x444444);
+                    sceneHUD.add(ambie); // Auch für HUD Licht, sonst ist da alles Schwarz
+                }
+
+                control = new goControl(webGLRenderer, camera);
+                if (replay) control.controlMode = 1;
+
+                // MODELLE woanders
+
+                if (!stereoOn) hud = new HeadUpDisplay(scene, sceneHUD);
+                mlm = new Style();
+                keep = new KeepRight();
+                tileDing = new Ding();
+
+                var onProgress = function (xhr) {
+                    if (xhr.lengthComputable) {
+                        var percentComplete = (xhr.loaded / xhr.total) * 100;
+                        if (dbg > 2)
+                            log(
+                                Math.round(percentComplete, 2) + "% downloaded",
+                            );
+                    }
+                };
+
+                // Loader für mesh1Quatro=View (Quadro-ding)
+                if (!simul && parMdl > 0)
+                    new THREE.ColladaLoader().load(
+                        "models/" + "Quadrotor" + ".dae", // resource URL
+                        function (collada) {
+                            var children = collada.scene.children;
+                            for (var c in children) {
+                                var x = children[c];
+                                x.name = "m1" + c;
+                                x.receiveShadow = shadow;
+                                x.castShadow = shadow;
+
+                                for (var s in x.children) {
+                                    var y = x.children[s];
+                                    y.receiveShadow = shadow;
+                                    y.castShadow = shadow;
+                                }
+
+                                mesh1Quatro.add(x);
+                            }
+
+                            var s = 0.1;
+
+                            mesh1Quatro.scale.set(s, s, s);
+                            mesh1Quatro.rotation.set(g(-90), g(0), g(-90));
+                            mesh1Quatro.position.y = -0.2;
+                            mesh1Quatro.name = "mesh1Quatro";
+                            mesh1Quatro.receiveShadow = shadow;
+                            mesh1Quatro.castShadow = shadow;
+                            mesh1Quatro.visible = control.controlMode == 1;
+                            meshXQuaFly.add(mesh1Quatro);
+                        }, // Function when resource is loaded
+                        onProgress,
+                    ); //load1
+
+                //  if(gCustom!=2 && control.controlMode==3)
+                //  {   if(fly) {
+
+                log("::: FLY: " + fly);
+                if (fly == "1") flyMdl = "Orion3";
+                if (fly == "2") flyMdl = "Lancet_TNG";
+                if (fly == "3") flyMdl = "Frog_TNG";
+                if (fly == "4") flyMdl = "Cessna"; // https://3dwarehouse.sketchup.com/model/2ec64783b238fd1cffb94dfdd6ddfaf0/Cessna-172-Skyhawk
+                if (fly == "5") flyMdl = "t65xwing"; // https://3dwarehouse.sketchup.com/model/e7e49b8668cc78c0c0663e1068c82b73/Incom-T65-X-Wing
+                if (fly == "6") flyMdl = "TIE_Fighter"; // https://3dwarehouse.sketchup.com/model/9ab4ff8d-df5c-4464-b5bd-66e4c88e5135/TIE-Fghter
+                if (fly == "7") flyMdl = "Quadrotor"; // https://3dwarehouse.sketchup.com/model/ufbec2914-9384-42b1-ae0a-81987b3fdd0d/Parrot-ARDrone-Quadcopter
+                if (fly == "8") flyMdl = "delorean"; // https://3dwarehouse.sketchup.com/model/7e749028bd0b1013cd564112824591c2/DeLorean-BTTF-3
+                var loader = new THREE.ColladaLoader(); // Loader für mesh3FlyCol=Flieger
+                if (!simul && parMdl > 0)
+                    loader.load(
+                        "models/" + flyMdl + ".dae", // resource URL
+                        function (collada) {
+                            var children = collada.scene.children;
+                            for (var c in children) {
+                                var x = children[c]; // maps c0= meshXQuaFly  mesh3FlyCol Scene, c0, c1 von 0-2, c0, c22 = Group1
+                                x.name = "x" + c;
+                                x.receiveShadow = shadow;
+                                x.castShadow = shadow;
+
+                                for (var s in x.children) {
+                                    var y = x.children[s];
+                                    y.receiveShadow = shadow;
+                                    y.castShadow = shadow;
+                                }
+
+                                mesh3FlyCol.add(x);
+                            }
+
+                            var s = 0.01;
+                            var r = -90;
+                            var p = 4;
+                            if (fly == "1") s = 0.05;
+                            if (fly == "4") {
+                                s = 0.02;
+                                r = 180;
+                                p = -1.0;
+                            }
+                            if (fly == "5") {
+                                s = 0.02;
+                                r = 90;
+                                p = +3.0;
+                            }
+                            if (fly == "6") {
+                                s = 0.02;
+                                r = 90;
+                                p = +3.0;
+                            }
+                            if (fly == "7") {
+                                s = 0.2;
+                                r = 0;
+                                p = -2.0;
+                            }
+                            if (fly == "8") {
+                                s = 1 / 32;
+                                r = 180;
+                                p = -0.7;
+                            }
+
+                            mesh3FlyCol.scale.set(s, s, s);
+                            mesh3FlyCol.rotation.x = g(-90);
+                            mesh3FlyCol.rotation.z = g(r);
+                            mesh3FlyCol.position.x = p;
+                            mesh3FlyCol.name = "mesh3FlyCol";
+                            mesh3FlyCol.receiveShadow = shadow;
+                            mesh3FlyCol.castShadow = shadow;
+                            mesh3FlyCol.visible = control.controlMode == 3;
+                            meshXQuaFly.add(mesh3FlyCol);
+                            //mFlight.visible=false // Klötzchenflieger weg
+
+                            /*if(fly=="Cessna") {
+                    propeller = maps.children[0].children[1].children[0].children[1].children[0].children[21]
+                }*/
+                        }, // Function when resource is loaded
+                        onProgress,
+                    ); //load **/
+
+                //    } // //  {   if(fly) {
+
+                /*
+    var fluegel = new NodeGeo().box( 16,0.1,2.0).trans(0,0.10,-1.5)
+    var horuder = new NodeGeo().box(  4,0.1,1.5).trans(0,0.55,+3)
+    var leitwerk= new NodeGeo().box(0.1,2.0,1.5).trans(0,1.5,+3)
+    var gFlight = new NodeGeo().box( 1,1,6).merge(fluegel).merge(leitwerk).merge(horuder).trans(0,1.5,0).geometry
+    var mFlight = new THREE.Mesh(gFlight,mlm.plane) // buildDemoFlieger();   fff
+    */
+
+                meshXQuaFly = new THREE.Mesh(); // buildDemoFlieger();   fff
+                meshXQuaFly.position.copy(camera.position);
+                meshXQuaFly.rotation.copy(camera.rotation);
+                //at.add(mFlight)
+                meshXQuaFly.receiveShadow = shadow;
+                meshXQuaFly.castShadow = shadow;
+                meshXQuaFly.name = "meshXQuaFly";
+                //    if(dbg!=1.5)
+                maps.add(meshXQuaFly);
+                control.Flight.init(meshXQuaFly);
+
+                //  } //Wien
+
+                var loaderEye = new THREE.TextureLoader(); // instantiate a loader
+                if (!simul)
+                    loaderEye.load(
+                        // load a resource
+                        "eye_smiley.png", // resource URL     'eye_green/robot/smiley.png'
+                        function (texture) {
+                            // Function when resource is loaded
+                            cEye.map = texture; // The actual texture is returned in the event.content
+                        },
+                        function (xhr) {
+                            // Function called when download progresses
+                            if (dbg > 2)
+                                log(
+                                    (xhr.loaded / xhr.total) * 100 +
+                                        "% loaded  EYE TextureLoader",
+                                );
+                        },
+                    );
+
+                // setSkyDome()
+
+                PanoramaxInit();
+
+                // document.getElementById("container").style.cursor = "move"
+
+                if (dbg == 1.3) ModelPlace(4799, "server", "burg", 0, 0, "obj");
+
+                if (dbg == 1.2) ModelPlace(4799, "server", "car", 0, 0, "obj");
+
+                animate();
+
+                //}shader
+            } // Init Ende /////////////////////////////
+
+            //-----------------------------------------------------------------------------
+
+            function setLowDome() {
+                // log("tile hole: ",ts0,ts1)
+                var ts0 = (lastLoadEx - lastLoadx) * (tileDistMax + 0);
+                var ts1 = (lastLoadz - lastLoadEz) * (tileDistMax + 1);
+                ts0 = Math.floor(ts0 * 100) / 100; // cm genau reicht
+                ts1 = Math.floor(ts1 * 100) / 100;
+                var geometry;
+
+                var points = [];
+                points.push(new THREE.Vector2(+FAR, +FAR));
+                points.push(new THREE.Vector2(+FAR, -FAR));
+                points.push(new THREE.Vector2(-FAR, -FAR));
+                points.push(new THREE.Vector2(-FAR, +FAR));
+                points.push(new THREE.Vector2(+FAR, +FAR));
+                var shape = new THREE.Shape(points);
+                points = [];
+                points.push(new THREE.Vector2(+ts1, +ts0));
+                points.push(new THREE.Vector2(-ts0, +ts0));
+                points.push(new THREE.Vector2(-ts0, -ts1));
+                points.push(new THREE.Vector2(+ts1, -ts1));
+                points.push(new THREE.Vector2(+ts1, +ts0));
+                shape.holes.push(new THREE.Shape(points));
+                geometry = new THREE.ShapeGeometry(shape);
+                if (geometry.faces.length < 8)
+                    alert("lowDome bad: " + ts0 + "/" + ts1);
+                var mate = new THREE.MeshLambertMaterial({
+                    color: mlm.white,
+                    side: THREE.DoubleSide,
+                });
+                lowDome = new THREE.Mesh(geometry, mate);
+                lowDome.rotation.x = g(90);
+                lowDome.position.y = DrawDelta * 6;
+                lowDome.name = "SkyPlane";
+                //    scene.add(lowDome)
+
+                var loaderSky = new THREE.TextureLoader(); // instantiate a loader
+                loaderSky.load(
+                    // load a resource
+                    "sky_dome4.jpg", // resource URL
+                    function (texture) {
+                        // Function when resource is loaded
+                        cSky.map = texture; // The actual texture is returned in the event.content
+                        var tdm = tileDistMax;
+                        if (tdm < 4) tdm = 4;
+                        var skysiz = (tdm * ts0) / tileDistMax; // FAR * 0.98; // 400 // (tileDistMax*1) *111  //
+                        skyDome = new THREE.Mesh(
+                            new THREE.SphereGeometry(
+                                skysiz,
+                                32 * 2,
+                                16 * 2,
+                                0,
+                                g(360),
+                                g(0),
+                                g(180),
+                            ),
+                            cSky,
+                        ); // 18,105
+                        skyDome.scale.y = 0.7; // zur Kante   // 0.4 = below fog
+                        skyDome.name = "SkyDome";
+                        scene.add(skyDome);
+                    },
+                    function (xhr) {
+                        // Function called when download progresses
+                        if (dbg > 2)
+                            log(
+                                (xhr.loaded / xhr.total) * 100 +
+                                    "% loaded  SKY TextureLoader",
+                            );
+                    },
+                );
+            }
+
+            function animate() {
+                var dt = clock.getDelta() + 0.000001;
+
+                if (dt > max_dt) {
+                    var t = "dt: " + Math.floor(dt * 1000) + "ms";
+                    if (dt > 1) t += " ------------------";
+                    console.log(t);
+                    // if(dt>0.5) hud.Out(["Animation cycle > 0.5s","All moves are stopped,","all keys are released."])
+                    dt = max_dt; // schummel aber beruhigt Bewegungen
+                    control.Stop();
+                }
+
+                control.update(dt);
+
+                if (tileDing) tileDing.update(dt); // OSMgoAnimate(dt)
+                camera.updateProjectionMatrix(); // kein HUD? Wohl nur bei Resize in controls.js
+
+                for (var w in windSpin) {
+                    windSpin[w].rotation.z += dt;
+                }
+                //if(propeller) {
+                //    propeller.rotation.y +=dt*5
+                //    propeller.position.x = 0 +Math.sin(propeller.rotation.y+g(180))*90     //        x:-23.50536  y:2.972156  z: 14.74443
+                //    propeller.position.z = 0 -Math.sin(propeller.rotation.y)*60     //        x:-23.50536  y:2.972156  z: 14.74443
+                //}
+
+                webGLRenderer.clear(); // Warum so umständlich?
+
+                if (stereoOn) stereoEffect.render(scene, camera);
+                else {
+                    webGLRenderer.render(scene, camera);
+                    webGLRenderer.render(sceneHUD, cameraHUD);
+                } // Render HUD on top of the scene.
+
+                requestAnimationFrame(animate);
+            }
+
+            // file:///Users/Karl/Dropbox/OSMgo/act/go.html?lat=49.63018&lon=10.872&ele=101.00&dir=0&view=-10&user=karlos&con=2&opt=1&tiles=2&card=1&sha=0
+        </script>
+    </body>
+</html>

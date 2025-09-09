@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Export Import</title>
+  </head>
+  <body>   
+ 
+     Body text
+ 
+     <script type='text/javascript'>
+ 
+       
+ 
+function log(text) {
+        console.log(text)
+}
+       
+var exp;
+var mem
+       
+asy()
+       
+       
+       
+async function asy() {
+        console.log("++")
+       
+ 
+        // >4K geht nur in Firefox!
+        var wasmImports = { env:  {
+    logL,
+    log_,
+    new_Node,
+    new_Way,
+    new_Rel,
+    addNodeTag,
+    addWayNode,
+    addWayTag,
+    addRelMem,
+    addRelTag,
+                                        }/*env*/};
+       
+        const response     = await fetch('tile.wasm')                   //;console.log("11")    // response of a XMLHttpRequest
+        const buffer       = await response.arrayBuffer()                //;console.log("22")    // Byte buffer
+        const wasmModule   = await WebAssembly.compile(buffer)  //;console.log("33")    //r wasmModule = new   WebAssembly.Module(wasmCode);
+        const wasmInstance = new   WebAssembly.Instance(wasmModule,wasmImports)         //r wasmInsta= await WebAssembly.instantiate(wasmModule, wasmImports);
+ 
+        console.log("exports:",wasmInstance.exports)
+ 
+        exp = wasmInstance.exports;
+        mem = wasmInstance.exports.memory;
+       
+        http();
+ 
+        console.log("--")
+}
+ 
+var nodeKARL
+var  wayKARL
+var  relKARL
+ 
+ 
+function atoll(ref) {
+  if(ref<0) { log("_ref:"+ref); return; }
+  var txt = new Int8Array(mem.buffer, ref, 33);
+  var str = new TextDecoder().decode(txt);
+      str = str.split(",")[0];
+      str = str.split("\n")[0];
+      str = str.split("\u0000")[0];
+  return str*1;
+}
+ 
+function logL(val) {
+  log("logL:"+val*1.0);
+}
+ 
+function log_(ref) {
+  if(ref<0) { log("log_ref:"+ref); return; }
+  var txt = new Int8Array(mem.buffer, ref, 188);
+  var str = new TextDecoder().decode(txt);
+  log(str.split("\u0000")[0]);
+}
+ 
+function atofWEG(a) {
+  var txt = new Int8Array(mem.buffer, a, 22);
+  var str = new TextDecoder().decode(txt);
+      str = str.split(",")[0];
+      str = str.split("\n")[0];
+  //log("atof:"+str)
+  return str*1.0;
+}
+ 
+function atolWEG(a) {
+  var txt = new Int8Array(mem.buffer, a, 22);
+  var str = new TextDecoder().decode(txt);
+      str = str.split(",")[0];
+      str = str.split("\n")[0];
+  //log("atol:"+str)
+  return str*1;
+}
+ 
+ 
+function GetRelXPos(lon) { return 11; }
+function GetRelZPos(lat) { return 22; }
+ 
+// Dummies, die durch OSM-go ersetzt werden
+function new_Node(id,lat,lon) {
+  var ll = atoll(id);
+//nodeKARL   = new Node(ll,lat,lon) 
+  log("... node (id,lat,lon):"+ll+","+lat+","+lon);
+}
+ 
+function new_Way(id) {
+  var ll = atoll(id);
+//wayKARL   = new Way(ll)
+  log("--- way (id):,"+ll);
+  }
+ 
+function new_Rel(id) {
+        var ll   = atoll(id);
+//relKARL  = new Rel(ll)
+  log("=== rel (id):,"+ll);
+}
+ 
+function addWayNode(id) {
+  var ll = atoll(id);
+//wayKARL.AddNode(ll);
+  log("     wayNode (id):"+ll);
+}
+function addNodeTag(t,v) {
+  var tag = new Int8Array(mem.buffer, t, 244);
+      val = new Int8Array(mem.buffer, v, 244);
+      tag = new TextDecoder().decode(tag);
+      val = new TextDecoder().decode(val);
+      tag = tag.split("\u0000" )[0];
+      val = val.split("\u0000" )[0];
+//nodeKARL.AddTag(tag,val);
+  log("     nodeTag (tag,val):"+tag+","+val);
+}
+function addWayTag(t,v) {
+  var tag = new Int8Array(mem.buffer, t, 244);
+      val = new Int8Array(mem.buffer, v, 244);
+      tag = new TextDecoder().decode(tag);
+      val = new TextDecoder().decode(val);
+      tag = tag.split("\u0000" )[0];
+      val = val.split("\u0000" )[0];
+//wayKARL.AddTag(tag,val);
+  log("     wayTag (tag,val):"+tag+","+val);
+}
+function addRelTag(t,v) {
+  var tag = new Int8Array(mem.buffer, t, 244);
+      val = new Int8Array(mem.buffer, v, 244);
+      tag = new TextDecoder().decode(tag);
+      val = new TextDecoder().decode(val);
+      tag = tag.split("\u0000" )[0];
+      val = val.split("\u0000" )[0];
+//relKARL.AddTag(tag,val)
+  log("     relTag (tag,val):"+tag+","+val);
+}
+function addRelMem(t,r,o) {
+  var type = new Int8Array(mem.buffer, t, 244);
+  var ref  = new Int8Array(mem.buffer, r, 244);
+  var role = new Int8Array(mem.buffer, o, 244);
+      type = new TextDecoder().decode(type);
+      ref  = new TextDecoder().decode(ref );
+      role = new TextDecoder().decode(role);
+      type = type.split("\u0000" )[0];
+      ref  =  ref.split("\u0000" )[0];
+      role = role.split("\u0000" )[0];
+//relKARL.AddMember(ref, type, role)
+  log("     relMem (type,ref,role):"+type+","+ref+","+role);
+}
+ 
+ 
+function http() {
+ 
+    var bbox = "49.710,11.089,"
+             + "49.715,11.094";
+    var url  = "https://overpass-api.de/api"
+                + "/interpreter?data=[out:json];("
+                + " rel( "+bbox+");"
+                + " way( "+bbox+");"
+                + "  (._;>;);"
+                + ");out;";
+ 
+    log(url);
+    var
+    xhr = new XMLHttpRequest();
+    xhr.open("GET",url); // "test.json" "https://osmgo.org/user/st002.txt"
+    xhr.responseType = "arraybuffer";
+    xhr.onload       = callback;
+    xhr.send();
+}
+ 
+ 
+ 
+// Must be Javascript
+function callback(e) { // console.log(e)
+  log("+++++ callback +++++");
+ 
+  // OSM-Daten sind hier:
+  var target = e.target;
+  var buf    = target.response; // console.log(new TextDecoder().decode(buf));
+  var len    = buf.byteLength;   log("byteLength:"+len);
+  var i8buf  = new Int8Array(buf);
+ 
+  // Daten nach C kopieren:
+  var ref = exp.memRef();
+  var out = new Int8Array(mem.buffer, ref, len);
+ 
+  for(i =0 ; i<len ; i++)
+    out[i] = i8buf[i];
+  out[len] = 0;
+ 
+  log("===== exp.wasm =====");
+  exp.wasm();
+  log("----- callback -----");
+}
+ 
+ 
+ 
+ 
+        </script>
+  </body>
+</html>

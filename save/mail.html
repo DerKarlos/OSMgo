@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html" charset="utf-8" />
+    <title>MAIL test</title>
+
+    <body bgcolor=black>
+        <script type='module'>
+
+// Aufruf per http oder https://www.osmgo.org/mail.html geht
+console.log("mail start")
+
+
+
+//// Name suchen und Wert zurückgeben
+function GET_Par(v) {
+  if(   !HTTP_GET_VARS[v]){return '';}  // Name als Index nicht vorhanden? return Leerstring
+  return HTTP_GET_VARS[v];              // ansonsen return Wert zum Namen
+}
+
+
+//        = "./login.php?username="+userName+"&lat="+latitude+"&lon="+longitude
+
+var url   = "./mail.php?username="+"userName"+"&lat="+"11"+"&lon="+"22"
+var llName = GET_Par("name")
+if(llName) url += ( "&name=" + llName )
+console.log(url)
+xmlhttp.open("GET", url, true)
+xmlhttp.send()
+
+window.open('mailto:osmgo@osmgo.org?subject=subject&body=body text text text text text text');
+
+/** Message geht mit aktivem Passwort nicht. Box fragt (beim ersten mal) nach passwort!!!
+var dbhttp = new XMLHttpRequest()
+// zi11 geht wohl nicht im lokalen netz:
+//http.open("GET", "http://zi11.ddns.net:3487/web/message?type=3&timeout=6&text=GO 2 Minuten: "+"stateCity"     , true)
+dbhttp.open("GET","https://192.168.0.8:80"+ "/web/message?type=3&timeout=6&text=GO"            +"stateCity"     , true)
+dbhttp.send()
+**/
+
+console.log("mail end")
+
+</script>
+
+</body>
+
+</html>

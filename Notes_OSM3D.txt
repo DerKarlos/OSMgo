@@ -1,0 +1,77 @@
+
+INSTALL
+
+
+npm install --save three
+npm install --save-dev vite
+
+npm install three ???
+npm install chroma-js
+npm install jquery ???
+
+vite will generate a comressed dispatch version. Nice!
+
+"Installation added node_modules/ and package.json to my project. What are they?"
+Well, not at once but in a later attempt, node_modules/ apeared with a lot of content
+and package.json even was overwritten, as it was only "type": "module" in it anyway
+
+npx vite
+It firstly did not start because of many errors in my code. Thats fine.
+I would like to see this errors in VSCode too please!
+
+npx vite build
+generates a dir dist for Distribution
+
+USEFULL: quick-lint-js better? replaces? than ESLint
+
+
+
+
+TEST-Caos
+
+For the (with "npx vite build") comprimated file "/dist/assets/index-CXnk0FmV.js"
+"quick-lint-js" draws warnings:
+misleading use of ',' operator in conditional statement
+The causing code may be from a three.js file:
+if (e.applyMatrix3(this.matrix), e.x < 0 || e.x > 1)
+
+Building the /dist with "npx vite build" causes some warnings like this:
+main.js (462:33): "LightShadow" is not exported by "node_modules/three/build/three.module.js", imported by "main.js".
+"new THREE.LightShadow" causes no problems in the source files while "quick-lint-js" and broswer test by localhost:5173/dist
+Testing with the sources, it realy is not know. But "THREE.PerspectiveCamera" is known
+
+
+
+
+
+TASTEN SHORTCUTS:
+Terminal sichtbarkeit toggeln:      Shift ^control `
+
+
+----
+3dmr
+
+!!! Chemitz zeigt nicht alle. Positionierung nicht bündig bzw. falsch rotiert!
+
+post in forum https
+//community.openstreetmap.org/t/relaunching-the-3d-model-repository/135130/2
+ways: no info values like direction
+https://www.openstreetmap.org/edit?way=92443957#map=17/50.795948/12.917419
+https://www.openstreetmap.org/edit?way=92443429#map=17/50.795706/12.918298
+3dmr:
+https://3dmr.eu/search?query=chemnitz
+https://3dmr.eu/model/11/3
+https://3dmr.eu/model/12/3
+
+API: https://3dmr.eu/docs
+----- https://3dmr.eu/api/info/11 ------
+{"id": 11, "revision": 3, "title": "Technology Center Chemnitz A", "lat": 50.79594865, "lon": 12.917426997479, "license": 0, "desc": "Technology Center Chemnitz House A located in Chemnitz / Saxony / Germany. Terms of Use: https://help.sketchup.com/en/article/3000049 Nr. 10.", "author": "5294793", "date": "2018-04-25",
+"rotation": 0.0, "scale": 1.0, "translation": [0.0, 0.0, 0.0], "tags": {"building": "yes"}, "categories": ["tall"]}
+------ https://3dmr.eu/api/info/12 ------
+{"id": 12, "revision": 3, "title": "Technology Center Chemnitz B", "lat": 50.7957134895041, "lon": 12.918308526277485, "license": 0, "desc": "Technology Center Chemnitz House B located in Chemnitz / Saxony / Germany. Terms of Use: https://help.sketchup.com/en/article/3000049 Nr. 10.", "author": "5294793", "date": "2018-04-26",
+"rotation": 0.0, "scale": 1.0, "translation": [-6.11, 2.82, 0.0], "tags": {"building": "yes"}, "categories": ["tall"]}
+
+Compare:
+https://osm2world.org/demo/?lat=50.7958258&lon=12.9177481&radius=149.28&alpha=1.571&beta=0.785
+To show at last 3 of the models!:
+https://osmgo.org/v03.html?km=1&lat=50.79407658&lon=12.91689686&ele=39.34&dir=344&view=-18
